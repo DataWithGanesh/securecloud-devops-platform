@@ -1,0 +1,10 @@
+﻿services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: securecloud-demo-api:0.1.0
+    container_name: securecloud-demo-api
+    ports:
+      - "127.0.0.1:8001:8000"
+    restart: unless-stopped

@@ -1,0 +1,37 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Test and coverage reports
+.coverage
+htmlcov/
+coverage.xml
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Terraform state and secrets
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
+# Kubernetes and cloud credentials
+kubeconfig
+.aws/
+
+# Logs
+*.log
