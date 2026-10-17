@@ -1,4 +1,4 @@
-﻿name: SecureCloud CI
+name: SecureCloud CI
 
 on:
   push:
@@ -93,6 +93,11 @@ jobs:
         run: |
           docker run --rm securecloud-demo-api:${{ github.sha }} \
             python -m pip list
+
+      - name: Inspect Python package metadata
+        run: |
+          docker run --rm securecloud-demo-api:${{ github.sha }} \
+            python -c "import importlib.metadata as m; print('\n'.join(sorted(d.metadata['Name'] + '==' + d.version for d in m.distributions())))"
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
