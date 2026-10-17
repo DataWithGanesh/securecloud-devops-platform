@@ -99,8 +99,18 @@ jobs:
         with:
           image-ref: securecloud-demo-api:${{ github.sha }}
           scan-type: image
-          format: table
+          format: json
+          output: trivy-report.json
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
+          if-no-files-found: warn
+          retention-days: 7
