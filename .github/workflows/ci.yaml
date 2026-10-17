@@ -89,6 +89,11 @@ jobs:
             -t securecloud-demo-api:${{ github.sha }} \
             apps/demo-api
 
+      - name: Inspect Python packages in image
+        run: |
+          docker run --rm securecloud-demo-api:${{ github.sha }} \
+            python -m pip list
+
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:
