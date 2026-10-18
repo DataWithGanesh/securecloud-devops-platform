@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "Project name used for resource tagging"
+  description = "Project name used for resource naming and tagging"
   type        = string
   default     = "SecureCloud"
 }

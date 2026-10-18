@@ -35,6 +35,22 @@ jobs:
       - name: Run tests
         run: python -m pytest -v
 
+  network-cidr-test:
+    name: Validate network CIDR ranges
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Validate network CIDR ranges
+        run: python infrastructure/terraform/tests/validate_network_cidrs.py
+
   secret-scan:
     name: Scan repository for secrets
     runs-on: ubuntu-24.04
