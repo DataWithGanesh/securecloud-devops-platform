@@ -82,3 +82,34 @@ variable "enable_nat_gateway" {
   type        = bool
   default     = false
 }
+
+variable "enable_application_security_groups" {
+  description = "Whether to define application load balancer and application security groups"
+  type        = bool
+  default     = true
+}
+
+variable "allowed_https_cidrs" {
+  description = "Approved IPv4 CIDR ranges allowed to reach the application load balancer on HTTPS"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.allowed_https_cidrs :
+      can(cidrhost(cidr, 0)) && can(regex("^[0-9.]+/[0-9]+$", cidr))
+    ])
+    error_message = "Every allowed HTTPS CIDR must be a valid IPv4 CIDR range."
+  }
+}
+
+variable "application_port" {
+  description = "TCP port used by the application behind the load balancer"
+  type        = number
+  default     = 8000
+
+  validation {
+    condition     = var.application_port >= 1 && var.application_port <= 65535 && floor(var.application_port) == var.application_port
+    error_message = "The application port must be an integer from 1 through 65535."
+  }
+}

@@ -22,3 +22,14 @@ output "internet_gateway_id" {
   description = "ID of the Internet Gateway"
   value       = aws_internet_gateway.this.id
 }
+
+
+output "alb_security_group_id" {
+  description = "ID of the application load balancer security group"
+  value       = try(aws_security_group.alb[0].id, null)
+}
+
+output "application_security_group_id" {
+  description = "ID of the application security group"
+  value       = try(aws_security_group.application[0].id, null)
+}

@@ -81,21 +81,68 @@ Do not create endpoints in AWS for this project.
 
 ## 9. Security Requirements
 
-- Restrict inbound traffic to explicitly required ports and sources.
-- Keep worker nodes in private subnets.
-- Apply least-privilege IAM permissions.
-- Avoid hard-coded credentials and secrets.
-- Enable logging and monitoring in the future reference design.
+### 9.1 Application Load Balancer Security Group
+
+The reference configuration defines an ALB security group with
+explicit ingress and egress rules.
+
+- Inbound: TCP 443 only from CIDRs listed in `allowed_https_cidrs`.
+- Default: `allowed_https_cidrs` is empty, so no HTTPS ingress
+  rules are created.
+- Outbound: TCP traffic to the application security group on
+  `application_port` only.
+- Do not use `0.0.0.0/0` as an approved source without an explicit
+  security review and justification.
+
+An ALB, HTTPS listener, TLS certificate, and target group are not
+created by this security-group configuration.
+
+### 9.2 Application Security Group
+
+- Inbound: TCP traffic on `application_port` only from the ALB
+  security group.
+- Default application port: 8000, matching the current demo API
+  container configuration.
+- No direct public ingress rule is defined.
+- Outbound: no egress rules are defined initially.
+
+The restrictive outbound policy may prevent access to external APIs,
+databases, telemetry backends, or other dependencies. If dependencies
+are introduced, document and add only the required outbound rules.
+
+### 9.3 Security-Group Controls
+
+- `enable_application_security_groups` controls whether these
+  security groups and their associated rules are defined.
+- Security-group IDs are exposed through the network module outputs
+  for future infrastructure integration.
+- Security groups are stateful; response traffic for permitted
+  connections is automatically allowed.
+- Keep ingress and egress rules explicit and narrowly scoped.
+- Do not introduce direct public access to application workloads.
+- Do not hard-code credentials or secrets.
+
+### 9.4 Validation Limitations
+
+Terraform formatting and validation check configuration structure
+and syntax; they do not prove runtime reachability or effective
+security in AWS.
+
+No AWS-dependent checks have been performed. The security-group
+configuration remains a reference design until independently
+reviewed and tested in an approved environment.
 
 ## 10. Cost and Deployment Guardrails
 
 - This repository is a reference implementation.
 - No AWS infrastructure is to be provisioned during development.
-- Do not run terraform apply.
+- Do not run `terraform apply`.
+- Do not create AWS resources for this project.
 - Review costs and billing visibility before any future deployment.
 - AWS Budgets provides notifications; it is not a hard spending cap.
 
 ## 11. Validation
 
 Validate Terraform syntax and formatting locally.
+Run the local network CIDR validation test.
 Document AWS-dependent checks as unverified until tested in AWS.
