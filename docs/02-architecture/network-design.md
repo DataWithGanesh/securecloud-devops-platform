@@ -22,22 +22,26 @@ Define the proposed AWS network boundaries and traffic flows for SecureCloud bef
 
 ## 3. Proposed VPC
 
-| Setting | Proposed Value | Status |
-|---|---|---|
-| AWS Region | ap-south-1 | Selected |
-| VPC CIDR | 10.0.0.0/16 | Proposed |
-| Public subnet example | 10.0.1.0/24 | Proposed |
-| Private subnet example A | 10.0.2.0/24 | Proposed |
-| Private subnet example B | 10.0.3.0/24 | Proposed |
-| Availability Zones | To be selected during detailed design | Pending |
+The following CIDRs match the current Terraform reference configuration. They are defined in code but have **not been provisioned in AWS**.
 
-The CIDRs are planning examples, not provisioned resources. Check for overlap with any networks used by the engineer before finalizing them.
+| Setting            | Reference Value              | Status               |
+| ------------------ | ---------------------------- | -------------------- |
+| AWS Region         | `ap-south-1`                 | Selected             |
+| VPC CIDR           | `10.20.0.0/16`               | Defined in Terraform |
+| Public subnet A    | `10.20.0.0/20`               | Defined in Terraform |
+| Public subnet B    | `10.20.16.0/20`              | Defined in Terraform |
+| Private subnet A   | `10.20.32.0/20`              | Defined in Terraform |
+| Private subnet B   | `10.20.48.0/20`              | Defined in Terraform |
+| Availability Zones | `ap-south-1a`, `ap-south-1b` | Defined in Terraform |
+
+The CIDR ranges have passed the project's local containment and overlap checks. This does not establish that they are suitable for every future deployment or that any AWS resources exist. Review potential overlap with connected networks before a deployment is considered.
 
 ## 4. Subnet Responsibilities
 
 ### Public Subnets
 
 Potential uses:
+
 - Internet-facing load-balancer resources, if required.
 - Internet Gateway routing for explicitly approved public resources.
 
@@ -46,6 +50,7 @@ Public subnets must not automatically expose worker nodes or application managem
 ### Private Subnets
 
 Potential uses:
+
 - EKS worker nodes.
 - Application workloads.
 - Internal services.
@@ -61,6 +66,7 @@ Client → HTTPS endpoint → approved ingress/load-balancing component → Kube
 The final ingress implementation depends on the selected EKS design and the budget assessment.
 
 Before deployment:
+
 - Select the required ingress component.
 - Determine whether a public endpoint is necessary.
 - Restrict administrative access.
@@ -72,6 +78,7 @@ Before deployment:
 EKS nodes and workloads may need outbound access to retrieve images, download dependencies, or call approved services.
 
 Evaluate these options before deployment:
+
 - NAT Gateway.
 - NAT instance or other supported network architecture.
 - Relevant AWS service endpoints.
@@ -82,6 +89,7 @@ Do not create a NAT Gateway by default. Its hourly and data-processing charges m
 ## 7. EKS Network Considerations
 
 The detailed EKS design must specify:
+
 - Cluster endpoint access mode.
 - Control-plane and node communication requirements.
 - Node subnet placement.
@@ -105,6 +113,7 @@ Exact rules must be validated against current Amazon EKS requirements before pro
 ## 9. Cost Controls
 
 Before creating network resources:
+
 1. Estimate public IPv4 and load-balancer charges.
 2. Estimate NAT hourly and data-processing charges.
 3. Evaluate service endpoints and their costs.
@@ -115,6 +124,7 @@ Before creating network resources:
 ## 10. Cleanup Requirements
 
 After temporary testing:
+
 - Remove temporary load balancers and network resources when safe.
 - Verify that temporary NAT resources have been removed.
 - Review public IP addresses, elastic network interfaces, and associated resources.
@@ -123,7 +133,7 @@ After temporary testing:
 
 ## 11. Open Decisions
 
-- Final VPC and subnet CIDRs.
+- Confirm reference CIDR suitability and check for overlap with connected networks before any deployment.
 - Number of Availability Zones.
 - EKS endpoint access configuration.
 - Public versus private ingress.
@@ -134,4 +144,8 @@ After temporary testing:
 
 ## 12. Status
 
-Draft network design. No AWS network resources are implied to exist. Finalize after cost, security, and EKS feasibility reviews.
+The network reference configuration is defined in Terraform and has passed local formatting, configuration validation, and CIDR containment/overlap checks.
+
+The VPC, subnets, routes, Internet Gateway, and security groups have not been provisioned in AWS. EKS connectivity, live traffic paths, and actual AWS behavior remain unverified.
+
+Final deployment decisions remain subject to security review and cost feasibility. No AWS provisioning is authorized by this document.

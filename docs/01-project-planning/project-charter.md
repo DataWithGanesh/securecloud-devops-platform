@@ -138,15 +138,18 @@ Each milestone follows the cycle: **Design → Implement → Test → Document �
 
 ## 10. Current Status
 
-- Project directory: created by the project owner; location reported as `D:\securecloud-devops-platform`.
-- Docker Engine: verified running.
-- AWS CLI authentication: verified successful.
-- Configured AWS region: verified as `ap-south-1`.
-- Application: not yet implemented.
-- Terraform infrastructure: not yet implemented.
-- EKS deployment: not yet provisioned.
-- Cost validation: pending.
-- Architecture and implementation documentation: in progress.
+- Project directory: `D:\securecloud-devops-platform`.
+- Docker Engine: previously verified running.
+- AWS CLI authentication: previously verified successful; no AWS resources have been provisioned for this project.
+- Configured AWS region: `ap-south-1`.
+- Application: FastAPI demonstration service implemented; all three automated tests passed locally.
+- Container: Docker image built successfully; root, liveness, and readiness endpoints responded correctly; container ran as non-root UID `10001` and was removed after testing.
+- CI: GitHub Actions workflow includes application testing and security checks. Terraform formatting/validation and infrastructure scanning have been added locally and require workflow execution evidence.
+- Terraform infrastructure: reference network and security-group configuration implemented; local formatting and validation passed.
+- AWS identity and remote state: design and implementation status require separate verification.
+- EKS deployment: not provisioned.
+- Cost validation: full deployment estimate not approved; AWS provisioning remains excluded from the current work.
+- Documentation and evidence: in progress.
 
 ## 11. Approval Gate
 

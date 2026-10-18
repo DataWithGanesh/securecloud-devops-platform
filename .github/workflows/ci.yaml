@@ -130,3 +130,42 @@ jobs:
           path: trivy-report.json
           if-no-files-found: warn
           retention-days: 7
+
+  terraform-validation:
+    name: Validate Terraform configuration
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.15.7"
+
+      - name: Check Terraform formatting
+        run: terraform -chdir=infrastructure/terraform fmt -check -recursive
+
+      - name: Initialize Terraform without a backend
+        run: terraform -chdir=infrastructure/terraform init -backend=false -input=false
+
+      - name: Validate Terraform configuration
+        run: terraform -chdir=infrastructure/terraform validate
+
+  iac-security-scan:
+    name: Scan Terraform configuration
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Scan infrastructure configuration
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: config
+          scan-ref: infrastructure/terraform
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
