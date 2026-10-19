@@ -7,12 +7,15 @@ locals {
 
 check "subnet_cidr_layout" {
   assert {
-    condition = alltrue([
-      for cidr in local.all_subnet_cidrs :
+    condition = (
       can(cidrhost(var.vpc_cidr, 0)) &&
-      can(cidrhost(cidr, 0))
-    ])
+      alltrue([
+        for cidr in local.all_subnet_cidrs :
+        can(cidrhost(cidr, 0)) &&
+        can(regex("^[0-9.]+/[0-9]+$", cidr))
+      ])
+    )
 
-    error_message = "The VPC and all subnet CIDRs must be valid CIDR ranges."
+    error_message = "The VPC and all subnet CIDRs must be valid IPv4 CIDR ranges."
   }
 }
