@@ -1,0 +1,14 @@
+﻿SecureCloud Demo API Helm chart
+
+This chart defines an internal ClusterIP Service.
+No external endpoint is configured by default.
+
+After deployment in an authorized Kubernetes environment,
+the application can be accessed using port-forwarding:
+
+kubectl --namespace {{ .Release.Namespace }} port-forward service/{{ include "securecloud-demo-api.fullname" . }} 8080:{{ .Values.service.port }}
+
+Then open:
+http://127.0.0.1:8080/health/ready
+
+This chart is currently being validated locally.

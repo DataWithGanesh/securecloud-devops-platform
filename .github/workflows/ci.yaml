@@ -237,3 +237,53 @@ jobs:
           -strict
           -summary
           deployment/kubernetes/demo-api/
+
+  helm-validation:
+    name: Validate Helm chart
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v4.3.1"
+
+      - name: Lint Helm chart
+        run: helm lint deployment/helm/securecloud-demo-api
+
+      - name: Render Helm chart
+        run: |
+          helm template securecloud-demo-api \
+            deployment/helm/securecloud-demo-api \
+            --namespace securecloud \
+            --output-dir /tmp/securecloud-rendered
+
+      - name: Install Kubeconform
+        shell: bash
+        run: |
+          curl -fsSLo kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Validate rendered Helm resources
+        shell: bash
+        run: |
+          mapfile -d '' -t manifests < <(
+            find /tmp/securecloud-rendered -type f -name '*.yaml' -print0
+          )
+
+          if [ "${#manifests[@]}" -eq 0 ]; then
+            echo "ERROR: No rendered Helm YAML manifests found."
+            exit 1
+          fi
+
+          printf 'Validating %s rendered manifests\n' "${#manifests[@]}"
+          kubeconform -strict -summary "${manifests[@]}"
