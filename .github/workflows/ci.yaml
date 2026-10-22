@@ -221,3 +221,19 @@ jobs:
           -s deployment/kubernetes/tests
           -p "test_*.py"
           -v
+
+      - name: Install Kubeconform
+        shell: bash
+        run: |
+          curl -fsSLo kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Validate Kubernetes manifest schemas
+        run: >-
+          kubeconform
+          -strict
+          -summary
+          deployment/kubernetes/demo-api/
