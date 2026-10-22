@@ -1,0 +1,22 @@
+﻿apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: securecloud-demo-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DataWithGanesh/securecloud-devops-platform.git
+    targetRevision: main
+    path: deployment/helm/securecloud-demo-api
+    helm:
+      releaseName: securecloud-demo-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: securecloud
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+      - CreateNamespace=true
