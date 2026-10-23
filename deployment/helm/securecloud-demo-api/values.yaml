@@ -4,8 +4,9 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: securecloud-demo-api
-  tag: "0.1.0"
+  repository: ghcr.io/datawithganesh/securecloud-demo-api
+  tag: ""
+  digest: "sha256:c9a7209746ba5f34043d97eacb3a8add5742167738470c8824d62838a8ce9692"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -17,6 +18,7 @@ serviceAccount:
   annotations: {}
 
 podAnnotations: {}
+
 podLabels:
   app.kubernetes.io/part-of: securecloud
 
