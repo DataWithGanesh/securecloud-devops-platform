@@ -1,4 +1,4 @@
-﻿replicaCount: 2
+replicaCount: 2
 
 nameOverride: ""
 fullnameOverride: ""
@@ -6,7 +6,7 @@ fullnameOverride: ""
 image:
   repository: ghcr.io/datawithganesh/securecloud-demo-api
   tag: ""
-  digest: "sha256:c9a7209746ba5f34043d97eacb3a8add5742167738470c8824d62838a8ce9692"
+  digest: "sha256:f5301efa20cb68eb1f4bfcd26d0499987bde332d6ae218bc79899442593c2681"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
