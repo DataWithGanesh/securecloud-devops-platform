@@ -1,0 +1,112 @@
+name: SecureCloud Image Supply Chain
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: ghcr.io/datawithganesh/securecloud-demo-api
+
+jobs:
+  build-scan-publish:
+    name: Build, scan, generate SBOM, and publish
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build container image
+        shell: bash
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "securecloud-demo-api:${GITHUB_SHA}" \
+            apps/demo-api
+
+      - name: Scan image for HIGH and CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: securecloud-demo-api:${{ github.sha }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: securecloud-demo-api:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: securecloud-sbom-${{ github.sha }}
+          path: sbom.spdx.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag image for GHCR
+        shell: bash
+        run: |
+          docker tag \
+            "securecloud-demo-api:${GITHUB_SHA}" \
+            "${IMAGE_NAME}:${GITHUB_SHA}"
+
+      - name: Publish scanned image
+        shell: bash
+        run: |
+          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
+
+      - name: Record published image reference
+        shell: bash
+        run: |
+          docker buildx imagetools inspect "${IMAGE_NAME}:${GITHUB_SHA}" \
+            > image-inspect.txt
+
+          DIGEST="$(sed -n 's/^Digest:[[:space:]]*//p' image-inspect.txt | head -n 1)"
+
+          if [[ ! "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "ERROR: Could not extract a valid registry digest."
+            cat image-inspect.txt
+            exit 1
+          fi
+
+          echo "${DIGEST}" > image-digest.txt
+
+          {
+            echo "Published image: ${IMAGE_NAME}:${GITHUB_SHA}"
+            echo "Immutable image reference: ${IMAGE_NAME}@${DIGEST}"
+            echo "Registry digest: ${DIGEST}"
+          } | tee image-reference.txt
+
+      - name: Upload image publication evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: securecloud-image-evidence-${{ github.sha }}
+          path: |
+            image-reference.txt
+            image-digest.txt
+            image-inspect.txt
+          if-no-files-found: error
+          retention-days: 90
