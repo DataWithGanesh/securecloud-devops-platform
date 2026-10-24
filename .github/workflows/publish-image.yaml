@@ -262,7 +262,7 @@ jobs:
             "${IMAGE_NAME}@${IMAGE_DIGEST}" \
             /tmp/securecloud-rendered/securecloud-demo-api/templates/deployment.yaml
 
-            - name: Check main has not advanced
+      - name: Check main has not advanced
         if: steps.update.outputs.changed == 'true'
         shell: bash
         env:
