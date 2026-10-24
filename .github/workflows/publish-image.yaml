@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# Prevent simultaneous workflow runs from racing.
+# GitHub retains at most one pending run in a concurrency group.
+concurrency:
+  group: securecloud-image-supply-chain-main
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: ghcr.io/datawithganesh/securecloud-demo-api
 
@@ -19,6 +25,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    outputs:
+      image_digest: ${{ steps.record.outputs.image_digest }}
 
     steps:
       - name: Check out repository
@@ -79,6 +88,7 @@ jobs:
           docker push "${IMAGE_NAME}:${GITHUB_SHA}"
 
       - name: Record published image reference
+        id: record
         shell: bash
         run: |
           docker buildx imagetools inspect "${IMAGE_NAME}:${GITHUB_SHA}" \
@@ -93,6 +103,7 @@ jobs:
           fi
 
           echo "${DIGEST}" > image-digest.txt
+          echo "image_digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
 
           {
             echo "Published image: ${IMAGE_NAME}:${GITHUB_SHA}"
@@ -110,3 +121,183 @@ jobs:
             image-inspect.txt
           if-no-files-found: error
           retention-days: 90
+
+  promote-image:
+    name: Validate and promote image digest
+    runs-on: ubuntu-24.04
+    needs: build-scan-publish
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate published digest
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ needs.build-scan-publish.outputs.image_digest }}
+        run: |
+          if [[ ! "${IMAGE_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "ERROR: Invalid published image digest."
+            exit 1
+          fi
+
+          echo "Validated image digest: ${IMAGE_DIGEST}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install YAML parser
+        run: python -m pip install PyYAML==6.0.3
+
+      - name: Update Helm image digest
+        id: update
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ needs.build-scan-publish.outputs.image_digest }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          import yaml
+
+          path = Path("deployment/helm/securecloud-demo-api/values.yaml")
+          original = path.read_text(encoding="utf-8")
+          values = yaml.safe_load(original)
+
+          if not isinstance(values, dict):
+              raise SystemExit("ERROR: Helm values must be a YAML mapping.")
+
+          image = values.get("image")
+          if not isinstance(image, dict):
+              raise SystemExit("ERROR: Expected an image mapping.")
+
+          expected_repository = "ghcr.io/datawithganesh/securecloud-demo-api"
+          digest = os.environ["IMAGE_DIGEST"]
+
+          if image.get("repository") != expected_repository:
+              raise SystemExit("ERROR: Unexpected image repository.")
+
+          if image.get("tag", "") != "":
+              raise SystemExit("ERROR: Image tag must be empty when using a digest.")
+
+          if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+              raise SystemExit("ERROR: Invalid SHA-256 digest.")
+
+          if image.get("digest") == digest:
+              print("Helm values already use the published digest.")
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                  output.write("changed=false\n")
+              raise SystemExit(0)
+
+          image["digest"] = digest
+          updated = yaml.safe_dump(
+              values,
+              sort_keys=False,
+              allow_unicode=True,
+          )
+
+          path.write_text(updated, encoding="utf-8", newline="\n")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write("changed=true\n")
+
+          print(f"Updated Helm digest to {digest}")
+          PY
+
+      - name: Set up Helm
+        if: steps.update.outputs.changed == 'true'
+        uses: azure/setup-helm@v4
+        with:
+          version: "v4.3.1"
+
+      - name: Install Kubeconform
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        run: |
+          curl -fsSLo kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Validate promoted Helm chart
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        run: |
+          helm lint deployment/helm/securecloud-demo-api
+
+          helm template securecloud-demo-api \
+            deployment/helm/securecloud-demo-api \
+            --namespace securecloud \
+            --output-dir /tmp/securecloud-rendered
+
+          mapfile -d '' -t manifests < <(
+            find /tmp/securecloud-rendered -type f -name '*.yaml' -print0
+          )
+
+          if [ "${#manifests[@]}" -eq 0 ]; then
+            echo "ERROR: No rendered Helm manifests found."
+            exit 1
+          fi
+
+          kubeconform -strict -summary "${manifests[@]}"
+
+      - name: Confirm rendered image uses published digest
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ needs.build-scan-publish.outputs.image_digest }}
+        run: |
+          grep -F \
+            "${IMAGE_NAME}@${IMAGE_DIGEST}" \
+            /tmp/securecloud-rendered/securecloud-demo-api/templates/deployment.yaml
+
+            - name: Check main has not advanced
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin main
+
+          if ! git merge-base --is-ancestor "${SOURCE_SHA}" origin/main; then
+            echo "ERROR: The image source commit is not an ancestor of current main."
+            echo "Refusing to promote a stale image."
+            exit 1
+          fi
+
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+            echo "ERROR: main advanced during promotion. Refusing to push a stale commit."
+            exit 1
+          fi
+
+      - name: Commit promoted Helm values to main
+        if: steps.update.outputs.changed == 'true'
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ needs.build-scan-publish.outputs.image_digest }}
+        run: |
+          if git diff --quiet -- deployment/helm/securecloud-demo-api/values.yaml; then
+            echo "No Helm values changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add deployment/helm/securecloud-demo-api/values.yaml
+          git commit -m "chore(gitops): promote image ${IMAGE_DIGEST:7:12}"
+
+          # A concurrent push after the fetch is rejected by Git if it
+          # makes this commit non-fast-forward. Never force-push main.
+          git push origin HEAD:main
