@@ -307,25 +307,61 @@ jobs:
       - name: Install YAML parser
         run: python -m pip install PyYAML==6.0.3
 
-      - name: Validate Argo CD Application manifest
+      - name: Validate Argo CD Application and immutable image
         run: |
           python - <<'PY'
-          import yaml
+          import re
           from pathlib import Path
+
+          import yaml
 
           path = Path("deployment/argocd/application.yaml")
           app = yaml.safe_load(path.read_text(encoding="utf-8"))
 
+          assert isinstance(app, dict), "Argo CD Application must be a YAML mapping"
           assert app["apiVersion"] == "argoproj.io/v1alpha1"
           assert app["kind"] == "Application"
           assert app["metadata"]["name"] == "securecloud-demo-api"
           assert app["metadata"]["namespace"] == "argocd"
-          assert app["spec"]["source"]["repoURL"] == "https://github.com/DataWithGanesh/securecloud-devops-platform.git"
-          assert app["spec"]["source"]["targetRevision"] == "main"
-          assert app["spec"]["source"]["path"] == "deployment/helm/securecloud-demo-api"
-          assert app["spec"]["destination"]["namespace"] == "securecloud"
-          assert app["spec"]["syncPolicy"]["automated"]["selfHeal"] is True
-          assert app["spec"]["syncPolicy"]["automated"]["prune"] is False
 
-          print("Argo CD Application YAML and required settings are valid.")
+          spec = app["spec"]
+          source = spec["source"]
+
+          assert source["repoURL"] == (
+              "https://github.com/DataWithGanesh/securecloud-devops-platform.git"
+          )
+          assert source["targetRevision"] == "main"
+          assert source["path"] == "deployment/helm/securecloud-demo-api"
+          assert spec["destination"]["namespace"] == "securecloud"
+          assert spec["syncPolicy"]["automated"]["selfHeal"] is True
+          assert spec["syncPolicy"]["automated"]["prune"] is False
+
+          chart_path = Path(source["path"])
+          assert chart_path.is_dir(), "Helm chart directory does not exist"
+          assert (chart_path / "Chart.yaml").is_file(), "Chart.yaml is missing"
+
+          values_path = chart_path / "values.yaml"
+          assert values_path.is_file(), "Helm values.yaml is missing"
+
+          values = yaml.safe_load(values_path.read_text(encoding="utf-8"))
+          assert isinstance(values, dict), "Helm values must be a YAML mapping"
+
+          image = values["image"]
+          assert image["repository"] == (
+              "ghcr.io/datawithganesh/securecloud-demo-api"
+          ), "Unexpected container image repository"
+          assert image.get("tag", "") == "", (
+              "Image tag must be empty when deploying by digest"
+          )
+
+          digest = image.get("digest", "")
+          assert isinstance(digest, str), "Image digest must be a string"
+          assert re.fullmatch(r"sha256:[0-9a-f]{64}", digest), (
+              "Image must use a valid SHA-256 digest"
+          )
+
+          print(
+              "Argo CD Application, Helm chart reference, "
+              "and immutable image configuration are valid."
+          )
           PY
