@@ -1,47 +1,36 @@
 replicaCount: 2
-
-nameOverride: ""
-fullnameOverride: ""
-
+nameOverride: ''
+fullnameOverride: ''
 image:
   repository: ghcr.io/datawithganesh/securecloud-demo-api
-  tag: ""
-  digest: "sha256:f5301efa20cb68eb1f4bfcd26d0499987bde332d6ae218bc79899442593c2681"
+  tag: ''
+  digest: sha256:b7b01d6033019c23e389ba60ed919290819039015612e65823fac9bc335e4291
   pullPolicy: IfNotPresent
-
 imagePullSecrets: []
-
 serviceAccount:
   create: true
-  name: ""
+  name: ''
   automount: false
   annotations: {}
-
 podAnnotations: {}
-
 podLabels:
   app.kubernetes.io/part-of: securecloud
-
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 10001
   runAsGroup: 10001
   seccompProfile:
     type: RuntimeDefault
-
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
   capabilities:
     drop:
-      - ALL
-
+    - ALL
 containerPort: 8000
-
 service:
   type: ClusterIP
   port: 8000
-
 livenessProbe:
   httpGet:
     path: /health/live
@@ -50,7 +39,6 @@ livenessProbe:
   periodSeconds: 10
   timeoutSeconds: 2
   failureThreshold: 3
-
 readinessProbe:
   httpGet:
     path: /health/ready
@@ -59,7 +47,6 @@ readinessProbe:
   periodSeconds: 5
   timeoutSeconds: 2
   failureThreshold: 3
-
 resources:
   requests:
     cpu: 100m
@@ -67,10 +54,8 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 autoscaling:
   enabled: false
-
 volumes: []
 volumeMounts: []
 nodeSelector: {}
