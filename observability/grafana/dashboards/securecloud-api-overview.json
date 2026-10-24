@@ -1,0 +1,160 @@
+{
+    "uid":  "securecloud-api",
+    "title":  "SecureCloud API Overview",
+    "tags":  [
+                 "securecloud",
+                 "sre",
+                 "observability"
+             ],
+    "timezone":  "browser",
+    "schemaVersion":  39,
+    "version":  1,
+    "refresh":  "15s",
+    "time":  {
+                 "from":  "now-1h",
+                 "to":  "now"
+             },
+    "panels":  [
+                   {
+                       "id":  1,
+                       "title":  "HTTP Requests Per Second",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "targets":  [
+                                       {
+                                           "expr":  "sum(rate(securecloud_http_requests_total{job=\"securecloud-api\"}[5m]))",
+                                           "legendFormat":  "Requests/sec",
+                                           "refId":  "A"
+                                       }
+                                   ]
+                   },
+                   {
+                       "id":  2,
+                       "title":  "HTTP 5xx Error Rate (%)",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  0
+                                   },
+                       "targets":  [
+                                       {
+                                           "expr":  "((100 * sum(rate(securecloud_http_requests_total{job=\"securecloud-api\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(securecloud_http_requests_total{job=\"securecloud-api\"}[5m])), 0.001)) or vector(0))",
+                                           "legendFormat":  "5xx errors (%)",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "percent"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  3,
+                       "title":  "P95 Request Latency",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  8
+                                   },
+                       "targets":  [
+                                       {
+                                           "expr":  "histogram_quantile(0.95, sum by (le) (rate(securecloud_http_request_duration_seconds_bucket{job=\"securecloud-api\"}[5m])))",
+                                           "legendFormat":  "P95 latency",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       }
+                   },
+                   {
+                       "id":  4,
+                       "title":  "API Scrape Availability",
+                       "type":  "stat",
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  8
+                                   },
+                       "targets":  [
+                                       {
+                                           "expr":  "up{job=\"securecloud-api\"}",
+                                           "legendFormat":  "API available",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  1,
+                                                            "mappings":  [
+                                                                             {
+                                                                                 "type":  "value",
+                                                                                 "options":  {
+                                                                                                 "0":  {
+                                                                                                           "text":  "DOWN",
+                                                                                                           "color":  "red"
+                                                                                                       },
+                                                                                                 "1":  {
+                                                                                                           "text":  "UP",
+                                                                                                           "color":  "green"
+                                                                                                       }
+                                                                                             }
+                                                                             }
+                                                                         ]
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "options":  {
+                                       "reduceOptions":  {
+                                                             "calcs":  [
+                                                                           "lastNotNull"
+                                                                       ],
+                                                             "fields":  "",
+                                                             "values":  false
+                                                         },
+                                       "orientation":  "auto",
+                                       "colorMode":  "background",
+                                       "graphMode":  "none",
+                                       "justifyMode":  "center"
+                                   }
+                   }
+               ]
+}

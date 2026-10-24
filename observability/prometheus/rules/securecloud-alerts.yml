@@ -1,0 +1,40 @@
+﻿groups:
+  - name: securecloud-api-alerts
+    rules:
+      - alert: SecureCloudAPIDown
+        expr: up{job="securecloud-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SecureCloud API is unreachable"
+          description: "Prometheus has been unable to scrape the SecureCloud API for at least 1 minute."
+
+      - alert: SecureCloudHigh5xxErrorRate
+        expr: |
+          (
+            sum(rate(securecloud_http_requests_total{job="securecloud-api",status_code=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(securecloud_http_requests_total{job="securecloud-api"}[5m])), 0.001)
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SecureCloud API 5xx error rate is high"
+          description: "More than 5% of API requests are returning HTTP 5xx responses."
+
+      - alert: SecureCloudHighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(securecloud_http_request_duration_seconds_bucket{job="securecloud-api"}[5m])
+            )
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SecureCloud API p95 latency is high"
+          description: "The API 95th-percentile request latency has exceeded 500 milliseconds for 5 minutes."
