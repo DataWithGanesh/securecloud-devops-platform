@@ -50,9 +50,43 @@
     networks:
       - monitoring
 
+  loki:
+    image: grafana/loki:3.5.1
+    container_name: securecloud-loki
+    command:
+      - "-config.file=/etc/loki/loki-config.yml"
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ../../observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  alloy:
+    image: grafana/alloy:v1.10.2
+    container_name: securecloud-alloy
+    command:
+      - "run"
+      - "--storage.path=/var/lib/alloy/data"
+      - "/etc/alloy/config.alloy"
+    volumes:
+      - ../../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+
 networks:
   monitoring:
 
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
+  alloy_data:
+
