@@ -6,87 +6,122 @@
 
 **Repository:** https://github.com/DataWithGanesh/securecloud-devops-platform
 
-**Branch:** main
+**Branch:** `main`
 
-**Latest confirmed successful CI commit:** `ffcdeeb`
+**Latest repository commit confirmed during this review:** `fe16b8a`
 
-**Latest documentation commit:** `021a5a1`
+**Latest confirmed successful CI commit in this review:** `536d285`
 
-**Validation status:** Passed for the confirmed CI run described below.
+**Validation status:** Local application and observability checks, Terraform validation, Helm validation, and both GitHub Actions workflows for commit `536d285` were confirmed during this review.
+
+The latest repository commit and latest confirmed successful CI commit are different. Do not interpret this report as proof that every subsequent commit passed CI.
 
 ## 2. GitHub Actions Results
 
-The latest confirmed successful GitHub Actions run completed all 11 jobs.
+The following successful runs were verified in GitHub Actions for commit `536d285`:
 
-| No. | Validation                                     | Result |
-| --- | ---------------------------------------------- | ------ |
-| 1   | FastAPI application tests                      | Passed |
-| 2   | Network CIDR validation                        | Passed |
-| 3   | Terraform network security tests               | Passed |
-| 4   | Repository secret scanning with Gitleaks       | Passed |
-| 5   | Python security scanning with Bandit           | Passed |
-| 6   | Docker image vulnerability scanning with Trivy | Passed |
-| 7   | Terraform formatting and validation            | Passed |
-| 8   | Terraform infrastructure security scanning     | Passed |
-| 9   | Kubernetes manifest validation                 | Passed |
-| 10  | Helm chart validation                          | Passed |
-| 11  | Argo CD GitOps configuration validation        | Passed |
+| Workflow                       | Run | Result |
+| ------------------------------ | --- | ------ |
+| SecureCloud CI                 | #31 | Passed |
+| SecureCloud Image Supply Chain | #11 | Passed |
 
-These results describe the confirmed run on commit `ffcdeeb`. They do not establish that subsequent commits have passed CI.
+The CI workflow previously completed 11 validation jobs on commit `ffcdeeb`, as documented in the earlier report. Those results apply to that specific revision.
+
+The successful runs for `536d285` confirm workflow success for the SRE runbook documentation commit. They do not independently establish that the subsequent automated image-promotion commit `fe16b8a` passed CI.
 
 ## 3. Local Validation Evidence
 
-The following local checks were previously completed:
+The following checks were confirmed during this review:
 
-- Three FastAPI tests passed.
-- Docker image built successfully.
-- Root, liveness, and readiness endpoints responded successfully.
-- The application container ran as non-root UID 10001.
-- The temporary test container was stopped and removed.
-- Terraform formatting check passed.
-- Terraform configuration validation passed.
-- Network CIDR containment and overlap checks passed.
-- Kubernetes manifest tests and schema validation passed for the tested manifests.
-- Helm chart linting and rendered-manifest validation passed.
-- Argo CD Application YAML parsing and selected configuration assertions passed.
-- Git whitespace checks passed during the documented changes.
+### Application and containers
 
-These results apply to the specific files and revisions tested at the time. Re-run relevant checks after subsequent modifications.
+- Docker Compose reported the API, Prometheus, Grafana, Alloy, and Loki containers as running.
+- The API liveness endpoint returned `status: ok`.
+- The API readiness endpoint returned `status: ready`.
+- The API `/metrics` endpoint returned HTTP 200.
 
-## 4. Security Remediation
+### Metrics and alerting
 
-The infrastructure security scan initially reported two HIGH-severity AWS-0164 findings concerning automatic public IP assignment on public subnets.
+- Prometheus reported its own scrape target as `UP`.
+- Prometheus reported the SecureCloud API scrape target as `UP`.
+- The `SecureCloudAPIDown`, `SecureCloudHigh5xxErrorRate`, and `SecureCloudHighP95Latency` alert rules were loaded, healthy, and inactive during inspection.
 
-The Terraform network configuration was updated to disable automatic public IP assignment for those subnets.
+### Logs
 
-The Trivy GitHub Actions reference was also corrected.
+- A Loki API query using the SecureCloud project and API container labels returned `success`.
+- The query returned one matching log stream.
+- The supplied Loki and Alloy log excerpt contained informational Loki maintenance messages and no obvious recurring error.
+- A separate successful Loki readiness response was not included in the evidence reviewed here.
 
-The subsequent confirmed GitHub Actions run completed successfully.
+### Terraform and Helm
+
+- `terraform fmt -check -recursive` completed without reporting formatting differences.
+- `terraform validate` reported that the configuration was valid.
+- `helm lint` completed with zero chart failures. Helm recommended adding a chart icon; this was informational.
+- `helm template` successfully rendered the ServiceAccount, Service, and Deployment manifests.
+- The rendered Deployment configured two replicas, an immutable image digest, health probes, a non-root security context, dropped Linux capabilities, disabled privilege escalation, a read-only root filesystem, and CPU and memory requests and limits.
+
+### Runbook documentation
+
+Five SRE runbooks were created, structurally checked, committed, and pushed:
+
+- API service outage
+- High HTTP 5xx error rate
+- High API latency
+- Missing Prometheus metrics
+- Missing logs in Loki
+
+The structural checks confirmed each file had a title and expected core sections. This was not a full execution test of every procedure or Prometheus query documented in the runbooks.
+
+## 4. Security and CI Coverage
+
+The earlier confirmed CI report recorded successful checks for:
+
+- FastAPI application tests
+- Network CIDR validation
+- Terraform network security tests
+- Gitleaks secret scanning
+- Bandit Python security scanning
+- Trivy Docker image scanning
+- Terraform formatting and validation
+- Terraform infrastructure security scanning
+- Kubernetes manifest validation
+- Helm chart validation
+- Argo CD configuration validation
+
+These results were recorded for the relevant workflow revision. Do not infer that every scan was rerun against the latest automated image-promotion commit.
 
 ## 5. Scope and Limitations
 
 - No AWS infrastructure has been provisioned for this project.
 - No live Kubernetes deployment or Argo CD synchronization has been performed.
-- Terraform validation does not prove that resources have been deployed.
+- Terraform validation does not prove that cloud resources have been deployed.
+- Helm linting and template rendering do not prove that the workload will run successfully on a live cluster.
 - The Argo CD CI job checks YAML syntax and selected configuration values; it does not perform full Application CRD schema validation.
-- CI scan results apply to the configuration and image scanned in the relevant run.
 - A successful scan does not establish that the entire project is vulnerability-free or production-ready.
+- Production-scale reliability, load, and failure-recovery testing has not been established by the evidence in this report.
 - AWS deployment remains subject to security review, cost assessment, and explicit approval.
 
 ## 6. Evidence
 
-GitHub Actions workflow:
+GitHub Actions:
 
 https://github.com/DataWithGanesh/securecloud-devops-platform/actions
 
-The workflow run and its individual job results are the primary evidence for the recorded CI status.
+Repository:
 
-The latest confirmed successful 11-job run was associated with commit `ffcdeeb`. The later documentation commit `021a5a1` should be verified independently in GitHub Actions before being recorded as CI-validated.
+https://github.com/DataWithGanesh/securecloud-devops-platform
+
+The GitHub Actions run pages are the primary evidence for workflow results. Local PowerShell command output provides evidence for the local checks described above.
+
+The latest repository commit confirmed during this review was `fe16b8a`. The latest displayed successful runs verified during this review were CI #31 and Image Supply Chain #11 for commit `536d285`.
 
 ## 7. Status
 
-The application, infrastructure reference configuration, Kubernetes manifests, Helm chart, and GitOps configuration have passed the recorded validation checks described in this report.
+SecureCloud has a working local observability environment, validated Terraform configuration, a successfully rendered Helm chart, GitHub Actions workflows with confirmed successful runs, and five SRE runbooks.
 
-Documentation, architecture review, further testing, and evidence collection remain in progress.
+The repository was synchronized with `origin/main` during this review.
+
+The project is suitable for continued portfolio development and technical demonstration within the stated scope. Live cloud deployment, production-scale testing, and independent CI verification of the latest automated image-promotion commit remain outside the evidence confirmed here.
 
 This report records validation evidence, not a live production deployment.
