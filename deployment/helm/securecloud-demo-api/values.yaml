@@ -4,7 +4,7 @@ fullnameOverride: ''
 image:
   repository: ghcr.io/datawithganesh/securecloud-demo-api
   tag: ''
-  digest: sha256:55ab75c591a370bac8f827aae95d8fad399875627bc88625f2d2c0696c486559
+  digest: sha256:cb3e9aebff9c2e0cb670c7f449ea9032bcbfd3b303c1d91b19089e33b1b7cac7
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 serviceAccount:
