@@ -25,6 +25,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     outputs:
       image_digest: ${{ steps.record.outputs.image_digest }}
@@ -122,6 +123,15 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Sign published image with Cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+
+      - name: Sign immutable image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.record.outputs.image_digest }}
+        shell: bash
+        run: |
+          cosign sign --yes "${IMAGE_NAME}@${IMAGE_DIGEST}"
   promote-image:
     name: Validate and promote image digest
     runs-on: ubuntu-24.04
@@ -148,6 +158,19 @@ jobs:
           fi
 
           echo "Validated image digest: ${IMAGE_DIGEST}"
+
+      - name: Install Cosign for signature verification
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+
+      - name: Verify image signature and GitHub workflow identity
+        env:
+          IMAGE_DIGEST: ${{ needs.build-scan-publish.outputs.image_digest }}
+        shell: bash
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/DataWithGanesh/securecloud-devops-platform/.github/workflows/publish-image.yaml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${IMAGE_NAME}@${IMAGE_DIGEST}"
 
       - name: Set up Python
         uses: actions/setup-python@v7
